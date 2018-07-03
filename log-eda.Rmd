@@ -54,16 +54,17 @@ cleaned %>%
 ```
 
 ```{r hours}
+#Total usage in hours per day
 cleaned %>%
-  group_by(dayfu = floor_date(initial_time, "day")) %>%
+  group_by(byday = floor_date(initial_time, "day")) %>%
   summarize(total_dur = sum(duration)) %>%
-  qplot(x = dayfu, y = total_dur/3600, data = ., geom = "path")
+  ggplot(aes(x = byday, y = total_dur / 3600)) + 
+  geom_path() + 
+  geom_smooth(se = FALSE)
 ```
 
 ```{r viz}
-# qplot(x = as.integer(duration), data = cleaned, 
-#       geom = "histogram", bins = 100)
-
+# Total usage in minutes for top 10 apps all time
 top10 <- cleaned %>% 
   group_by(app_name) %>% 
   summarize(total_dur = sum(duration)) %>% 
@@ -71,23 +72,30 @@ top10 <- cleaned %>%
   head(10) %>% 
   pull(app_name)
 
-
 cleaned %>%
   filter(app_name %in% top10) %>% 
-  group_by(app_name, dayfu = floor_date(initial_time, "day")) %>%
-  summarize(total_dur = sum(duration)) %>%
-  filter(dayfu > ymd("2018-06-01")) %>% 
-  ggplot(aes(x = dayfu, y = total_dur)) + 
-  geom_path(aes(color = app_name), size = 1.2)
-  #qplot(x = dayfu, y = total_dur/60, data = ., geom = "path", color = app_name)
+  group_by(app_name, byday = floor_date(initial_time, "day")) %>%
+  summarize(total_dur = sum(duration) / 60) %>%
+  ggplot(aes(x = byday, y = total_dur)) + 
+  geom_smooth(aes(color = app_name), size = 1.2, se = FALSE)
 
+
+# Total usage in minutes for top 10 apps (past 30 days)
+top10_30days <- cleaned %>% 
+  filter(initial_time > today() - 30) %>% 
+  group_by(app_name) %>% 
+  summarize(total_dur = sum(duration) / 60) %>% 
+  arrange(desc(total_dur)) %>% 
+  head(10) %>% 
+  pull(app_name)
+
+cleaned %>%
+  filter(app_name %in% top10) %>%
+  filter(initial_time > today() - 30) %>% 
+  group_by(app_name, byday = floor_date(initial_time, "day")) %>%
+  summarize(total_dur = sum(duration) / 60) %>%
+  ggplot(aes(x = byday, y = total_dur)) + 
+  geom_smooth(aes(color = app_name), size = 1.2, se = FALSE)
 ```
 
-```{r daily}
-cleaned %>% 
-  mutate(dates = floor_date(initial_time, "day")) %>% 
-  group_by(dates) %>% 
-  summarize(hours_used = sum(duration) / 3600) %>%
-  ggplot(aes(x = dates, y = hours_used)) +
-  geom_smooth(se = FALSE)
-```
+
