@@ -1,19 +1,23 @@
 ---
-title: "Untitled"
-author: "Chris Peralta"
-date: paste0("Last updated: ", lubridate::today())
+title: "Monthly app report"
+date: '`r format(Sys.Date(), "%B %d, %Y")`'
 output: html_document
-editor_options: 
+editor_options:
   chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo=FALSE, message=FALSE, strip.white=TRUE)
 
 library(tidyverse)
 library(lubridate)
+library(cowplot)
+library(hrbrthemes)
 
 source("load_data.R")
+source("no_clip.R")
+
+options(warn=-1)
 ```
 
 ```{r cleaning, include=FALSE} 
@@ -43,28 +47,7 @@ cleaned <- logs %>%
 
 ```
 
-
-
-```{r vis}
-cleaned %>% 
-  group_by(app_name) %>% 
-  summarize(total_duration = sum(duration)) %>% 
-  arrange(desc(total_duration)) %>% 
-  View()
-```
-
-```{r hours}
-#Total usage in hours per day
-cleaned %>%
-  group_by(byday = floor_date(initial_time, "day")) %>%
-  summarize(total_dur = sum(duration)) %>%
-  ggplot(aes(x = byday, y = total_dur / 3600)) + 
-  geom_path() + 
-  geom_smooth(se = FALSE)
-```
-
-```{r viz}
-# Total usage in minutes for top 10 apps all time
+```{r top10vars, include=FALSE}
 top10 <- cleaned %>% 
   group_by(app_name) %>% 
   summarize(total_dur = sum(duration)) %>% 
@@ -72,15 +55,6 @@ top10 <- cleaned %>%
   head(10) %>% 
   pull(app_name)
 
-cleaned %>%
-  filter(app_name %in% top10) %>% 
-  group_by(app_name, byday = floor_date(initial_time, "day")) %>%
-  summarize(total_dur = sum(duration) / 60) %>%
-  ggplot(aes(x = byday, y = total_dur)) + 
-  geom_smooth(aes(color = app_name), size = 1.2, se = FALSE)
-
-
-# Total usage in minutes for top 10 apps (past 30 days)
 top10_30days <- cleaned %>% 
   filter(initial_time > today() - 30) %>% 
   group_by(app_name) %>% 
@@ -89,13 +63,80 @@ top10_30days <- cleaned %>%
   head(10) %>% 
   pull(app_name)
 
+newapps <- setdiff(top10, top10_30days)
+```
+
+```{r viz, fig.width=12}
+#Total usage in hours per day
 cleaned %>%
+  group_by(byday = floor_date(initial_time, "day")) %>%
+  summarize(total_dur = sum(duration)) %>%
+  ggplot(aes(x = byday, y = total_dur / 3600)) + 
+  geom_path() + 
+  geom_smooth(se = FALSE) + 
+  theme_ipsum(grid = "y", axis = "y")
+```
+
+`r paste0("New apps in top 10: ", setdiff(top10, top10_30days))`
+
+
+```{r plots, fig.width=12, fig.height=12, fig.asp=1.0}
+# Total usage in minutes for top 10 apps all time
+plot.alltime <- cleaned %>%
+  filter(app_name %in% top10) %>% 
+  group_by(app_name, byday = floor_date(initial_time, "day")) %>%
+  summarize(total_dur = sum(duration) / 3600) %>%
+  ggplot(aes(x = byday, y = total_dur, color = app_name)) + 
+  geom_smooth(se = FALSE) + 
+  geom_dl(aes(label = app_name),
+          method = list(cex = 0.8, "last.bumpup")) +
+  guides(color = FALSE) +
+  theme(plot.margin = unit(c(.9, 2.5, 1, 1.2), "cm")) +
+  theme_ipsum(grid = "y", axis = "xy")
+
+plot.alltime <- no_clip(plot.alltime)
+
+# Total usage in minutes for top 10 apps (past 30 days)
+plot.30days <- cleaned %>%
   filter(app_name %in% top10) %>%
   filter(initial_time > today() - 30) %>% 
   group_by(app_name, byday = floor_date(initial_time, "day")) %>%
-  summarize(total_dur = sum(duration) / 60) %>%
-  ggplot(aes(x = byday, y = total_dur)) + 
-  geom_smooth(aes(color = app_name), size = 1.2, se = FALSE)
-```
+  summarize(total_dur = sum(duration) / 3600) %>%
+  ggplot(aes(x = byday, y = total_dur, color = app_name)) + 
+  geom_smooth(se = FALSE) + 
+  geom_dl(aes(label = app_name),
+          method = list(cex = 0.8, "last.bumpup", vjust = 2)) +
+  guides(color = FALSE) +
+  theme(plot.margin = unit(c(.9, 2.5, 1, 1.2), "cm")) +
+  theme_ipsum(grid = "y", axis = "xy")
 
+plot.30days <- no_clip(plot.30days)
+
+# Total usage in minutes for top 10 apps all time
+plot.usage.alltime <- cleaned %>%
+  group_by(byday = floor_date(initial_time, "day")) %>%
+  summarize(mean_dur = mean(duration)) %>%
+  ggplot(aes(x = byday, y = mean_dur)) + 
+  geom_path(color = "Grey50") + 
+  geom_smooth(se = FALSE) + 
+  theme_ipsum(grid = "y", axis = "xy")
+
+# Total usage in minutes for top 10 apps (past 30 days)
+plot.usage.30days <- cleaned %>%
+  group_by(byday = floor_date(initial_time, "day"), app_name) %>%
+  summarize(mean_dur = mean(duration)) %>%
+  filter(app_name %in% top10) %>%
+  ggplot(aes(x = byday, y = mean_dur, color = app_name)) + 
+  geom_smooth(se = FALSE) + 
+  coord_cartesian(ylim = c(0,450)) +
+  geom_dl(aes(label = app_name),
+          method = list(cex = 0.8, "last.bumpup")) +
+  guides(color = FALSE) +
+  theme(plot.margin = unit(c(.9, 2.5, 1, 1.2), "cm")) +
+  theme_ipsum(grid = "y", axis = "xy")
+
+plot.usage.30days <- no_clip(plot.usage.30days)
+
+plot_grid(plot.alltime, plot.30days, plot.usage.alltime, plot.usage.30days, ncol = 2)
+```
 
