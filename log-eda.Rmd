@@ -15,6 +15,7 @@ library(lubridate)
 library(cowplot)
 library(hrbrthemes)
 library(scales)
+library(directlabels)
 
 # Functions
 source("load_data.R")
