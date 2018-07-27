@@ -9,7 +9,7 @@ reports for my phone usage.
 This repository contains the following items of note:
 
 -   Customized report generated using R markdown.
--   Script to generate the Rmd file and email it to myself.
+-   Script to generate an HTML file and email it to myself.
 
 ### How it works:
 
