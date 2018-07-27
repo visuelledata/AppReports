@@ -28,4 +28,4 @@ This repository contains the following items of note:
     then sends a message to the EventGhost (Windows automation program).
     EventGhost then runs a shell command to run the
     [create\_report.R](https://github.com/visuelledata/AppReports/blob/master/create_report.R)
-    script. The report is then generated and emailed to using R.
+    script. The report is then generated and emailed using R.
